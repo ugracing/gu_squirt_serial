@@ -2,12 +2,24 @@
  Dr J.J.Trinder 2015
  jont@ninelocks.com
 
+This was built to assist testing an mbed program that is used to communicate with a megasquirt.
+
+The code is not pretty, or mega efficient. Its quick and dirty :-)
+
+At the moment it just responds to the A and S commands.
+
+You can add more as you need them. CSome of the commands take arguments so will require more sophisticated handling
+than I am currently doing.
+
+For the moment on receiving an A it will send out an arruy of N characters
+you can tweak how many bytes are sent and change the values at the locations you want. See the code in
+send_ecu_data() below
+
  code based on the example serial handling code from 
  https://code.google.com/p/java-simple-serial-connector/wiki/jSSC_examples
  this version is rather clunky but this is scaffolding test code
- so Ive not been overly tidy 
+ so Ive not been overley tidy 
 
-The intention also being to move this to git.
 
 
  */
@@ -66,13 +78,17 @@ public class Squirt_serial {
                         byte[] buffer = serialPort.readBytes(spe.getEventValue());
                         for (int i = 0; i < buffer.length; i++) {
                             //dump out the character we we received 
-                            System.out.println(Integer.toHexString((int) buffer[i]) + " " + (char) buffer[i]);
+                           // System.out.println(Integer.toHexString((int) buffer[i]) + " " + (char) buffer[i]);
                             //now react to it. we only at the moment care about seeing an A so
                             switch (buffer[i]) {
                                 case 'A':
-                                    System.out.println("was an A");
+                                    System.out.println("Received an A");
                                     send_ecu_data();
                                     break;
+                                case 'S':
+                                    System.out.println("Received an S");
+                                    send_identifier_string();
+                                    break;    
                                 default:
                                     break;
                             }
@@ -89,6 +105,18 @@ public class Squirt_serial {
         }
 
         /*
+        Send identifier string. NO idea if real ms sends an cr/lf at the end
+        
+        */
+        public void send_identifier_string(){
+            try {
+                    serialPort.writeString("gu_squirt_serial");
+                } catch (SerialPortException ex) {
+                    System.out.println(ex);
+                }
+                       
+        }
+        /*
          send the ecu data out, up serial port and we could show it here in nsome nice form    as well
          the var ecu_data_length determines how much of the ecu data is sent out
          so you can experiment with what happens at the mbed end if the data is not right.
@@ -101,7 +129,10 @@ public class Squirt_serial {
             ecu_data[23] = 0x12;
 
             for (int i = 0; i < ecu_data_length; i++) {
-                System.out.println(Integer.toHexString((int) ecu_data[i]) + " " + (char) ecu_data[i]);
+                                //I like hex as 2 digits
+                 String val_hex    =  String.format("%2s",Integer.toHexString((int) ecu_data[i] &0xff)).replace(' ', '0');
+                
+                System.out.println("location " + i + " was hex " + val_hex + " As ASCII is" + (char) ecu_data[i]);
                 try {
                     serialPort.writeByte(ecu_data[i]);
                 } catch (SerialPortException ex) {
